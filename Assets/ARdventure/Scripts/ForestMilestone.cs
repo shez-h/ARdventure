@@ -27,6 +27,8 @@ namespace ARdventure
         private bool paused;
         private GUIStyle heading, body, small, button, worldTag;
         private Texture2D pixel;
+        public bool Complete => quest != null && quest.Stage == QuestStage.Complete;
+        public bool EditingAddress => editingToyAddress;
 
         private void Awake()
         {
@@ -49,11 +51,18 @@ namespace ARdventure
             if (pixel != null) Destroy(pixel);
         }
 
+        private void OnDisable()
+        {
+            if (simulator != null) simulator.Enabled = false;
+            if (wifiToy != null) wifiToy.AcceptingScans = false;
+        }
+
         private void Update()
         {
             var keys = editingToyAddress ? null : Keyboard.current;
             if (keys != null && keys.escapeKey.wasPressedThisFrame) paused = !paused;
             simulator.Enabled = !paused && quest.Stage != QuestStage.Complete;
+            simulator.KeyboardEnabled = !editingToyAddress;
             wifiToy.AcceptingScans = useWifiToy && !paused && quest.Stage != QuestStage.Complete;
             if (keys != null && keys.rKey.wasPressedThisFrame) Restart();
             if (!paused && quest.Stage != QuestStage.Complete && !editingToyAddress)

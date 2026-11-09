@@ -31,10 +31,7 @@ namespace ARdventure
         {
             // Real cameras produce muted greens; hue separates them from cyan/yellow,
             // while saturation and brightness reject neutral or very dark readings.
-            Color.RGBToHSV(color, out float hue, out float saturation, out float brightness);
-            bool green = hue >= 75f / 360f && hue <= 165f / 360f
-                && saturation >= 0.25f && brightness >= 0.25f;
-            return green && Advance(QuestStage.FindGreen, QuestStage.GrowBridge);
+            return ToyColours.Green(color) && Advance(QuestStage.FindGreen, QuestStage.GrowBridge);
         }
 
         public void Reset()

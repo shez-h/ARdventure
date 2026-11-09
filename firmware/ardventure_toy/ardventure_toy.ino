@@ -3,8 +3,11 @@
 #include <WebServer.h>
 #include <esp_camera.h>
 #include <img_converters.h>
+#include <ESP_I2S.h>
+#include <array>
 #include <memory>
 #include "ColourSampler.h"
+#include "SoundMeter.h"
 
 namespace {
 constexpr char kAccessPoint[] = "ARdventure-Toy";
@@ -14,6 +17,8 @@ constexpr std::size_t kWidth = 320, kHeight = 240;
 constexpr std::size_t kRgbBytes = kWidth * kHeight * 3;
 WebServer server(80);
 bool cameraReady = false;
+I2SClass microphone(I2S_NUM_0);
+bool microphoneReady = false;
 unsigned long readyAt = 0;
 std::uint32_t sequence = 0;
 
@@ -30,6 +35,33 @@ void reply(int status, const char* body) {
 }
 
 bool warmedUp() { return cameraReady && static_cast<long>(millis() - readyAt) >= 0; }
+
+int listen(char* json, std::size_t capacity) {
+    if (!microphoneReady) { snprintf(json, capacity, "{\"error\":\"microphone_not_ready\"}"); return 503; }
+    std::array<std::int16_t, 320> block{};
+    std::size_t received = 0;
+    // Discard queued audio so the requested window describes what happens now.
+    for (int i = 0; i < 12; ++i) {
+        i2s_channel_read(microphone.rxChan(), block.data(), sizeof(block), &received, 0);
+        if (received == 0) break;
+    }
+    ardventure::SoundMeter meter;
+    const auto deadline = millis() + 3500;
+    while (meter.samples() < 32000 && static_cast<long>(millis() - deadline) < 0) {
+        received = 0;
+        const auto error = i2s_channel_read(microphone.rxChan(), block.data(), sizeof(block), &received, 100);
+        if (error != ESP_OK && error != ESP_ERR_TIMEOUT) break;
+        if (received > 0 && (received % sizeof(std::int16_t) != 0 || !meter.add(block.data(), received / sizeof(std::int16_t)))) break;
+        delay(1);
+    }
+    if (meter.samples() != 32000) { snprintf(json, capacity, "{\"error\":\"microphone_read_failed\"}"); return 503; }
+    snprintf(json, capacity,
+             "{\"version\":1,\"source\":\"xiao-microphone\",\"sequence\":%lu,"
+             "\"rms\":%.7f,\"peak_rms\":%.7f,\"clipped_fraction\":%.7f,"
+             "\"samples\":32000,\"sample_rate\":16000,\"duration_ms\":2000}",
+             static_cast<unsigned long>(++sequence), meter.rms(), meter.peak(), meter.clippedFraction());
+    return 200;
+}
 
 int capture(char* json, std::size_t capacity) {
     if (!warmedUp()) { snprintf(json, capacity, "{\"error\":\"camera_not_ready\"}"); return 503; }
@@ -97,6 +129,10 @@ void setup() {
     const auto serialStart = millis();
     while (!Serial && millis() - serialStart < 1500) delay(10);
     cameraReady = initialiseCamera();
+    // Sense PDM microphone: CLK GPIO42, DATA GPIO41 (Seeed's Arduino 3.x example).
+    microphone.setPinsPdmRx(42, 41);
+    microphoneReady = microphone.begin(I2S_MODE_PDM_RX, 16000, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO);
+    Serial.println(microphoneReady ? "Microphone ready: 16 kHz mono." : "ERROR: microphone init failed.");
     WiFi.mode(WIFI_AP);
     if (!WiFi.softAP(kAccessPoint, kPassword, 1, false, 1)) {
         Serial.println("ERROR: access point startup failed."); return;
@@ -107,6 +143,11 @@ void setup() {
             : "{\"version\":1,\"source\":\"xiao-camera\",\"ready\":false}");
     });
     server.on("/v1/scan", HTTP_POST, scan);
+    server.on("/v1/listen", HTTP_POST, [] {
+        char json[384];
+        const auto status = listen(json, sizeof(json));
+        reply(status, json);
+    });
     server.onNotFound([] { reply(404, "{\"error\":\"not_found\"}"); });
     server.begin();
     Serial.printf("Join Wi-Fi %s, password %s; toy address http://%s\n",
@@ -116,7 +157,11 @@ void setup() {
 void loop() {
     if (Serial.available()) {
         const char command = Serial.read();
-        if (command == 's') {
+        if (command == 'a') {
+            char json[384];
+            listen(json, sizeof(json));
+            Serial.println(json);
+        } else if (command == 's') {
             char json[256];
             capture(json, sizeof(json));
             Serial.println(json);

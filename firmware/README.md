@@ -1,6 +1,6 @@
-# Embedded C++ camera toy
+# Embedded C++ camera and microphone toy
 
-This firmware targets the **Seeed Studio XIAO ESP32-S3 Sense** with its camera expansion board and antenna. No additional sensors are needed. It captures a real camera image, computes the average colour of its central region on the ESP32, and returns the result to Unity over USB or local Wi-Fi.
+This firmware targets the **Seeed Studio XIAO ESP32-S3 Sense** with its camera expansion board and antenna. No additional sensors are needed. It captures a real camera image, computes the average colour of its central region on the ESP32, and returns the result to Unity over USB or local Wi-Fi. It also measures sound from the onboard PDM microphone for Echo Grove.
 
 ## First upload
 
@@ -30,7 +30,7 @@ Keep the board plugged in and close any serial monitor, then run from the reposi
 python3 tools/toy_usb_bridge.py --port /dev/cu.usbmodem1101
 ```
 
-This bridge uses Python's standard library, runs only on loopback, and forwards each capture command to the real board. It does not calculate or simulate colours. In Unity, enable **Toy camera** and leave the address at **http://127.0.0.1:8765**. Press **T / Scan toy**. All camera capture and image processing still run in embedded C++. The Mac keeps its normal Wi-Fi connection. Stop the bridge with Ctrl-C before uploading new firmware. If the USB port changes, restart with the new port.
+This bridge uses Python's standard library, runs only on loopback, and forwards each capture command to the real board. It does not calculate or simulate sensor readings. In Unity, enable **Toy camera** and leave the address at **http://127.0.0.1:8765**. Press **T / Scan toy**. All camera capture and image processing still run in embedded C++. The Mac keeps its normal Wi-Fi connection. Stop the bridge with Ctrl-C before uploading new firmware. If the USB port changes, restart with the new port.
 
 **T** also enables toy-camera input automatically, so the entire demo can be operated from the keyboard. If aiming is difficult, open [a fresh camera snapshot](http://127.0.0.1:8765/v1/frame) while the USB bridge is running. Refresh to capture another image. This diagnostic transfers the JPEG only to the local Mac; ordinary scans transfer RGB numbers.
 
@@ -51,6 +51,7 @@ The first capture becomes available after a two-second exposure warm-up. A camer
 The board runs a single-client demo access point, default address `192.168.4.1`. HTTP is local, with no cloud dependencies, SD writes or home-network credentials. Ordinary scans return numbers; the USB bridge's optional `/v1/frame` diagnostic transfers a JPEG locally for aiming. The fixed password and unauthenticated HTTP endpoints are for a local prototype, not production access control.
 
 - `GET /v1/status`: version, source and camera-ready flag.
+- `POST /v1/listen`: acquire 32,000 mono PCM samples at 16 kHz, return sound statistics after two seconds.
 - `POST /v1/scan`: acquire a fresh JPEG frame, decode into a reusable PSRAM buffer, sample its centre, return a measured reading.
 - Capture/not-ready failures: HTTP 503; decode/sampling failures: HTTP 500. No successful colour event is emitted on failure.
 
@@ -64,11 +65,28 @@ RGB is 0–255. Unity validates version, source, positive sequence/sample count 
 
 The quest accepts green hues from **75° to 165°**, with saturation at least **25%** and brightness at least **25%**. These prototype limits include muted camera greens while excluding cyan, yellow, neutral and very dark readings. A recorded physical green sample (55, 86, 70) is covered by the editor checks. Lighting and backgrounds still matter; this is a first calibration, not a broad colour-recognition benchmark.
 
+## Sense microphone / Echo Grove
+
+The sketch uses Arduino ESP32 3.x `ESP_I2S`, PDM receive on I2S0, GPIO42 clock and GPIO41 data. Camera and microphone initialise independently. In Echo Grove, leave the shared URL at `http://127.0.0.1:8765` and approach the echo stone. Listening starts automatically; I (capital i) and L also work as manual retries. The bridge sends serial command `a`; camera scan remains `s`, JPEG snapshot remains `p`. Direct board HTTP also exposes `/v1/listen`, but that Wi-Fi route has not been physically tested.
+
+A listen processes 100 blocks of 320 signed 16-bit samples (20 ms each). `SoundMeter.h` removes each block's DC offset, accumulates overall RMS energy and tracks the largest block RMS and clipped-sample fraction. Wide integer accumulators avoid PCM square/sum overflow. Memory is bounded: a 640-byte stack block and small statistics accumulator, with no audio-file allocation, SD write or raw-audio transfer. Queued audio is drained before capture. Driver reads have finite timeouts; the total acquisition deadline is 3.5 seconds. A failure returns HTTP 503, never silence. The demo services captures serially; the application loop yields during collection, but another HTTP request waits until it finishes.
+
+Example measured payload from the actual board:
+
+```json
+{"version":1,"source":"xiao-microphone","sequence":1,"rms":0.0082502,"peak_rms":0.0627389,"clipped_fraction":0.0,"samples":32000,"sample_rate":16000,"duration_ms":2000}
+```
+
+`peak_rms` is the maximum 20 ms window RMS, not the largest individual sample. Levels are normalised to 16-bit full-scale amplitude; they are not dB SPL. Unity validates all fields and bounds, then feeds an `IToySoundInput` event into the quest. Each response covers two seconds. Unity repeats these bounded requests while the player is beside the stone; make a sound when the HUD says listening. Listening stops away from the stone, during pause and once the path opens. There is no raw-audio upload or speech recognition.
+
+Echo Grove opens the bridge after **one sound** with peak-window RMS at least 0.01. No journal interaction, calibration or final quiet step is required. This simple demo threshold separates the measured quiet reading (peak 0.0003262) from recorded voice/sound readings (for example peak 0.0637199); other rooms can have background sounds that also open the path. F2 chooses explicit simulation; O then supplies one sound event at the stone. Pause, restart, walking away, source changes, address changes and leaving the quest cancel pending Unity requests. Cancellation prevents late quest events; the board may finish an already-started measurement.
+
 ## What the C++ demonstrates
 
 - Embedded camera configuration, PSRAM allocation and error reporting.
 - RAII ownership: every camera frame returns to the driver, including error paths; the reusable image buffer has explicit ownership.
 - Bounded image processing using integer accumulation, independent of Arduino and Unity.
+- Streaming microphone DSP with DC removal, RMS windows, clipping detection and bounded driver reads, covered by native tests.
 - A small versioned HTTP interface separating measurement from quest rules.
 - A cooperative main loop, optional serial diagnostics and finite USB-serial startup wait.
 
@@ -86,10 +104,20 @@ clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
 
 Checks exercise buffer bounds, empty/oversize images, channel order, centre-region isolation, black/white inputs and full-size accumulation. Unity's **ARdventure → Validate Wi-Fi Toy Protocol** checks valid/malformed payloads and quest gating; **Validate First Quest** remains available.
 
-Run the USB bridge's pseudo-terminal tests with `python3 -B -m unittest discover -s tools/tests -v`.
+Sound-meter checks (silence, DC bias, known RMS, transient retention, clipping and bounds):
+
+```sh
+clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \
+  firmware/tests/sound_meter_tests.cpp -o /tmp/ardventure-sound-tests
+/tmp/ardventure-sound-tests
+```
+
+Run the USB bridge's seven pseudo-terminal tests with `python3 -B -m unittest discover -s tools/tests -v`.
 
 ## References
 
+- [Seeed Sense microphone and Arduino 3.x setup](https://wiki.seeedstudio.com/xiao_esp32s3_sense_mic/)
+- [Espressif Arduino I2S API](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/i2s.html)
 - [Seeed camera setup and pinout](https://wiki.seeedstudio.com/xiao_esp32s3_camera_usage/)
 - [Seeed board setup, camera variants and PSRAM](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/)
 - [Espressif camera driver](https://github.com/espressif/esp32-camera)

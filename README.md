@@ -1,8 +1,28 @@
 # ARdventure
 
-A Unity adventure prototype for a removable smart accessory attached to existing toys. Start with the playable game and simulated toy discoveries; real hardware follows. No AR, cloud backend, paid assets or toy connection is needed for this milestone.
+A Unity adventure prototype for a removable smart accessory attached to existing toys. Five playable adventures use real camera and microphone discoveries or explicit simulated inputs. No AR, cloud backend or paid assets are required; every adventure also works without a toy.
 
-## Open and play Mosswood
+## Start the adventure demo
+
+Open the project in **Unity 6000.6.7f1**, wait for compilation, then choose **ARdventure → Open Adventure Demo** and press **Play**. The quest board is saved at `Assets/ARdventure/Scenes/QuestBoard.unity`; it is also the first enabled build scene. The existing SampleScene remains registered.
+
+Choose a card with the mouse, press **1–5**, or use **left/right arrows + Enter**. Each adventure opens its own independent screen:
+
+| Adventure | Physical discovery | Without hardware |
+| --- | --- | --- |
+| Mosswood — The Living Bridge | Find green to learn Vineweave and restore the crossing | G: green, B: blue |
+| Prism Hollow — The Sleeping Lanterns | Visit the blue, gold and green lanterns and scan their colours in that order | B: blue, Y: gold, G: green |
+| Moonlit Ruins — The Hidden Seal | Shade the lens to reveal a clue, uncover it and scan in light, then touch the rune stones in the remembered order | N: shade, L: light |
+| Windmill Ridge — The Sky Feather | Simulated gestures; an IMU would be needed for real motion | X: shake, Z: tilt left, C: tilt right, V: steady |
+| Echo Grove — The Silver Bell | Walk to the echo stone; one sound on the Sense microphone opens the path automatically | F2: select simulation, O: make a sound |
+
+Use **WASD/arrows** to move, **E/Space** to interact, **T** to scan the real camera, the Sense microphone listens automatically beside the echo stone (**I or L** retries), **Esc** to pause, **R** to restart the current quest, and **M** to return to the quest board. Keep the USB bridge running for real scans; see [hardware setup](firmware/README.md). The selected camera address is retained when switching screens. Completion badges last for the current Play session. Returning to an adventure starts it fresh; there is no saved-progress system.
+
+For Moonlit Ruins, shade the lens gently; a very dark reading reveals the clue. Uncover it and aim at a well-lit surface for the light scan. This is a relative camera-brightness experiment, not a calibrated light meter. The three camera adventures were played through with simulated discoveries; the new blue/gold and shade/light hardware interactions still need testing with physical objects under your lighting.
+
+See [expanded-demo verification and walkthroughs](docs/QUEST-DEMO.md).
+
+## Open and play Mosswood directly
 
 1. Open this project folder (the folder containing `Assets`, `Packages` and `ProjectSettings`) in Unity **6000.6.7f1**.
 2. Wait for compilation, then choose **ARdventure → Open Mosswood Prototype**. Alternatively open `Assets/ARdventure/Scenes/Mosswood.unity`.
@@ -16,6 +36,8 @@ A Unity adventure prototype for a removable smart accessory attached to existing
 Stop Play before changing scripts. A script reload during Play can discard the prototype's unsaved runtime quest and object references; stop and start Play again if this happens.
 
 ## Verify
+
+Choose **ARdventure → Validate Adventure Demo** outside Play mode to run **133 checks**: 39 motion/microphone checks, 47 camera-adventure checks, the original 31 quest checks and 16 camera-protocol checks. They include ordered lantern scans, clue/rune transitions, wrong/early inputs, restart, simulator events and whole-map reachability on both new maps.
 
 Choose **ARdventure → Validate First Quest** outside Play mode. The Console should report **all 31 quest, crossing and simulated-input checks passed**. These check stage ordering, early/wrong scans, real-camera and simulated green acceptance, reset, river restrictions, full-map reachability before/after bridge growth, and simulated-input event delivery/disablement.
 
@@ -36,10 +58,11 @@ For unattended validation with the project closed in the editor:
 - [Project concept, hardware and implementation principles](Assets/ARdventure/PROJECT-BRIEF.md)
 - [Milestone structure, controls and limitations](Assets/ARdventure/README-MILESTONE.md)
 - [Local verification record](docs/VERIFICATION.md)
+- [Expanded quest demo and verification](docs/QUEST-DEMO.md)
 
 Unity uses URP **17.6.0**, Input System **1.20.1**, and the new Input System (`activeInputHandler: 1`). Preserve existing packages, settings and unrelated content.
 
-`ForestQuest` holds progression and map rules. `IToyInput` is the sensor event boundary: `SimulatedToyInput` supplies debug scans and `WifiToyInput` requests physical camera readings over HTTP (via a local USB bridge or directly over Wi-Fi). `ForestMilestone` builds the world, handles conventional controls and displays the HUD. The XIAO ESP32-S3 Sense has now arrived; its camera/microphone/Wi-Fi/BLE are available, while motion, GPS and dedicated colour sensing require additional hardware. See the firmware guide for setup.
+`QuestDemo` hosts the quest board and independent adventure screens. `ForestQuest`, `LanternQuest`, `MoonlightQuest`, `WindmillQuest` and `EchoQuest` hold progression rules. `IToyInput` is the sensor event boundary: `SimulatedToyInput` supplies debug scans and `WifiToyInput` requests physical camera readings over HTTP (via a local USB bridge or directly over Wi-Fi). `IToyMotionInput` and `IToySoundInput` provide separate typed boundaries for motion and sound; `SimulatedMotionInput` and `MicrophoneToyInput` are their adapters. `ActionQuestScreen` renders Windmill Ridge and Echo Grove. `ForestMilestone` renders Mosswood; `DiscoveryQuestScreen` renders the two new maps with shared `AdventureArt` utilities. The XIAO ESP32-S3 Sense has arrived; its camera/microphone/Wi-Fi/BLE are available, while motion, GPS and dedicated colour sensing require additional hardware. See the firmware guide for setup.
 
 The forest, Pip and artwork are placeholders. There are no enemies, save system, narration or object recognition. Camera firmware measures colour; it does not identify objects. Trees are decorative; river and map boundaries constrain movement.
 

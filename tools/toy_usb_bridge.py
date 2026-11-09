@@ -27,10 +27,10 @@ class ToySerial:
             raise
         self.lock = threading.Lock()
 
-    def capture(self):
+    def capture(self, command=b"s", source="xiao-camera"):
         with self.lock:
             termios.tcflush(self.fd, termios.TCIFLUSH)
-            os.write(self.fd, b"s")
+            os.write(self.fd, command)
             deadline = time.monotonic() + 4
             buffer = b""
             while time.monotonic() < deadline:
@@ -52,10 +52,10 @@ class ToySerial:
                         raise ValueError("Invalid serial response")
                     if "error" in reading:
                         return 503, reading
-                    if reading.get("version") != 1 or reading.get("source") != "xiao-camera":
+                    if reading.get("version") != 1 or reading.get("source") != source:
                         raise ValueError("Unexpected toy protocol")
                     return 200, reading
-            raise TimeoutError("No camera response within four seconds")
+            raise TimeoutError("No sensor response within four seconds")
 
     def close(self):
         os.close(self.fd)
@@ -121,11 +121,11 @@ def main():
 
         def do_POST(self):
             # Empty deliberate scan requests only; reject browser cross-origin requests.
-            if self.path != "/v1/scan" or self.headers.get("Origin"):
+            if self.path not in ("/v1/scan", "/v1/listen") or self.headers.get("Origin"):
                 self.send_error(404)
                 return
             try:
-                status, body = toy.capture()
+                status, body = toy.capture(b"a", "xiao-microphone") if self.path == "/v1/listen" else toy.capture()
             except (OSError, ValueError, TimeoutError) as error:
                 print(f"Capture failed: {error}", flush=True)
                 status, body = 503, {"error": "usb_capture_failed"}

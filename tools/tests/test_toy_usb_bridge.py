@@ -57,6 +57,23 @@ class SerialBridgeTests(unittest.TestCase):
         self.assertEqual(self.toy.snapshot(), jpeg)
         thread.join(1)
 
+    def test_audio_measurement_unchanged(self):
+        reading = {"version": 1, "source": "xiao-microphone", "sequence": 9, "rms": .00825, "peak_rms": .0627, "samples": 32000, "sample_rate": 16000, "duration_ms": 2000, "clipped_fraction": 0}
+        thread = self.respond(json.dumps(reading).encode(), expected=b"a")
+        self.assertEqual(self.toy.capture(b"a", "xiao-microphone"), (200, reading))
+        thread.join(1)
+
+    def test_audio_cannot_use_camera_payload(self):
+        thread = self.respond(b'{"version":1,"source":"xiao-camera"}', expected=b"a")
+        with self.assertRaises(ValueError):
+            self.toy.capture(b"a", "xiao-microphone")
+        thread.join(1)
+
+    def test_microphone_error_cannot_become_silence(self):
+        thread = self.respond(b'{"error":"microphone_not_ready"}', expected=b"a")
+        self.assertEqual(self.toy.capture(b"a", "xiao-microphone"), (503, {"error": "microphone_not_ready"}))
+        thread.join(1)
+
 
 if __name__ == "__main__":
     unittest.main()

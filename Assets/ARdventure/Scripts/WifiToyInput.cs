@@ -5,11 +5,17 @@ using UnityEngine.Networking;
 
 namespace ARdventure
 {
+    public static class ToyConnectionSettings
+    {
+        // Keep the selected transport address when switching quest screens in this session.
+        public static string Address = "http://127.0.0.1:8765";
+    }
+
     // This adapter owns transport only. Quest progression still uses IToyInput events.
     public sealed class WifiToyInput : MonoBehaviour, IToyInput
     {
         public event Action<Color> ColorScanned;
-        public string Address { get; set; } = "http://127.0.0.1:8765";
+        public string Address { get => ToyConnectionSettings.Address; set => ToyConnectionSettings.Address = value; }
         public string Status { get; private set; } = "Start the USB bridge, then aim and scan.";
         public bool Busy => activeRequest != null;
         private UnityWebRequest activeRequest;
