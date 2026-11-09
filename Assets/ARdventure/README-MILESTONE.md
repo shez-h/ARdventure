@@ -1,5 +1,7 @@
 # ARdventure: Mosswood — first playable milestone
 
+**Hardware extension:** embedded C++ camera firmware, a USB bridge and an optional direct Wi-Fi input path are now included in the repository. See `firmware/README.md` at the project root. The original milestone description below records the simulator-only baseline; G/B remain simulated, while T/Scan toy requests a real camera reading.
+
 This is a Unity 6 / C# top-down adventure for the connected-toy project. It needs the Unity Input System package (already installed in the destination project). No paid assets, server, toy hardware or additional Unity packages are required.
 
 ## Install into the existing Unity project

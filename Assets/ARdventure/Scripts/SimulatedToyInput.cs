@@ -9,7 +9,7 @@ namespace ARdventure
         event Action<Color> ColorScanned;
     }
 
-    // Replace or supplement this with a Wi-Fi/BLE adapter later.
+    // Explicit debug inputs remain available alongside the physical-camera adapter.
     public sealed class SimulatedToyInput : MonoBehaviour, IToyInput
     {
         public event Action<Color> ColorScanned;

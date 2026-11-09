@@ -9,6 +9,9 @@ namespace ARdventure
         private ForestQuest quest;
         private SimulatedToyInput simulator;
         private IToyInput toy;
+        private WifiToyInput wifiToy;
+        private bool useWifiToy;
+        private bool editingToyAddress;
         private Camera view;
         private Transform hero;
         private Transform heroBody;
@@ -31,12 +34,15 @@ namespace ARdventure
             simulator = gameObject.AddComponent<SimulatedToyInput>();
             toy = simulator;
             toy.ColorScanned += OnColorScanned;
+            wifiToy = gameObject.AddComponent<WifiToyInput>();
+            wifiToy.ColorScanned += OnColorScanned;
             CreateWorld();
         }
 
         private void OnDestroy()
         {
             if (toy != null) toy.ColorScanned -= OnColorScanned;
+            if (wifiToy != null) wifiToy.ColorScanned -= OnColorScanned;
             if (square != null) { Destroy(square.texture); Destroy(square); }
             if (circle != null) { Destroy(circle.texture); Destroy(circle); }
             if (spriteMaterial != null) Destroy(spriteMaterial);
@@ -45,11 +51,12 @@ namespace ARdventure
 
         private void Update()
         {
-            var keys = Keyboard.current;
+            var keys = editingToyAddress ? null : Keyboard.current;
             if (keys != null && keys.escapeKey.wasPressedThisFrame) paused = !paused;
             simulator.Enabled = !paused && quest.Stage != QuestStage.Complete;
+            wifiToy.AcceptingScans = useWifiToy && !paused && quest.Stage != QuestStage.Complete;
             if (keys != null && keys.rKey.wasPressedThisFrame) Restart();
-            if (!paused && quest.Stage != QuestStage.Complete)
+            if (!paused && quest.Stage != QuestStage.Complete && !editingToyAddress)
             {
                 Vector2 movement = Vector2.zero;
                 if (keys != null)
@@ -63,6 +70,12 @@ namespace ARdventure
                 if (movement.sqrMagnitude > 0) walkingTime += Time.deltaTime * 12;
                 heroBody.localPosition = new Vector3(0, 0.1f + Mathf.Sin(walkingTime) * (movement.sqrMagnitude > 0 ? 0.045f : 0), 0);
                 if (keys != null && (keys.eKey.wasPressedThisFrame || keys.spaceKey.wasPressedThisFrame)) Interact();
+                if (keys != null && keys.tKey.wasPressedThisFrame)
+                {
+                    useWifiToy = true;
+                    wifiToy.AcceptingScans = true;
+                    wifiToy.Scan();
+                }
             }
             if (quest.BridgeGrown && !paused) bridgeReveal = Mathf.MoveTowards(bridgeReveal, 1, Time.deltaTime * 1.3f);
             bridge.localScale = new Vector3(Mathf.Max(0.001f, bridgeReveal), 1, 1);
@@ -109,10 +122,10 @@ namespace ARdventure
             }
             else if (Near(ForestMap.Crossing))
             {
-                if (quest.InspectCrossing()) message = "These roots need growing magic. Find something green! For this prototype, press G or use the scan button.";
+                if (quest.InspectCrossing()) message = "These roots need growing magic. Find something green! Scan with the toy camera, or use the simulator.";
                 else if (quest.GrowBridge()) message = "The roots are growing into a bridge! Follow it across the river to the beacon.";
                 else message = quest.Stage == QuestStage.MeetGuide ? "Pip might know what happened here. Go and speak to the forest keeper."
-                    : quest.Stage == QuestStage.FindGreen ? "We need green growing magic. Scan green with G. Try B to test a blue scan."
+                    : quest.Stage == QuestStage.FindGreen ? "We need green growing magic. Aim the toy at something green and scan, or simulate with G."
                     : "A living bridge! Cross at the centre of the vines.";
             }
             else if (Near(ForestMap.Beacon))
@@ -126,12 +139,13 @@ namespace ARdventure
             if (paused || quest.Stage == QuestStage.Complete) return;
             if (quest.Scan(color)) message = "Green discovered! You learned Vineweave. Return to the broken crossing and use your new ability.";
             else if (quest.Stage < QuestStage.FindGreen) message = "Scan recorded, but there's no discovery mission yet. Follow your current objective first.";
-            else if (quest.Stage == QuestStage.FindGreen) message = "That's blue! This puzzle needs green growing magic. Try another discovery.";
+            else if (quest.Stage == QuestStage.FindGreen) message = "That reading isn't green enough. Aim at a bright green object in good light and try again.";
             else message = "You already have growing magic. " + quest.Objective + ".";
         }
 
         private void Restart()
         {
+            wifiToy.CancelPending();
             paused = false;
             quest.Reset();
             hero.position = ForestMap.Spawn;
@@ -319,8 +333,25 @@ namespace ARdventure
             }
             Panel(new Rect(0, 612, 1280, 188), Hex("142D30"));
             GUI.Label(new Rect(30, 630, 765, 79), message, body);
-            GUI.Label(new Rect(30, 755, 760, 22), "Prototype • Placeholder artwork • No toy connection required", small);
-            GUI.Label(new Rect(850, 626, 390, 24), "TOY INPUT SIMULATOR", small);
+            useWifiToy = GUI.Toggle(new Rect(30, 715, 240, 25), useWifiToy,
+                useWifiToy ? "[x] Toy camera enabled" : "[ ] Enable toy camera", small);
+            if (useWifiToy)
+            {
+                GUI.SetNextControlName("ToyAddress");
+                string address = GUI.TextField(new Rect(275, 712, 290, 30), wifiToy.Address, 100);
+                if (address != wifiToy.Address) { wifiToy.CancelPending(); wifiToy.Address = address; }
+                GUI.enabled = !paused && quest.Stage != QuestStage.Complete && !wifiToy.Busy;
+                if (GUI.Button(new Rect(580, 707, 215, 40), "T · Scan toy", button))
+                { wifiToy.AcceptingScans = true; wifiToy.Scan(); GUI.FocusControl(null); }
+                GUI.enabled = true;
+                GUI.Label(new Rect(30, 755, 765, 30), wifiToy.Status, small);
+            }
+            else
+            {
+                wifiToy.AcceptingScans = false;
+                GUI.Label(new Rect(30, 755, 760, 22), "Prototype • Placeholder artwork • Toy connection optional", small);
+            }
+            GUI.Label(new Rect(850, 626, 390, 24), "SIMULATED INPUTS (G / B)", small);
             bool wasEnabled = GUI.enabled;
             GUI.enabled = !paused && quest.Stage != QuestStage.Complete;
             if (GUI.Button(new Rect(850, 660, 187, 40), "G  ·  Scan green", button)) simulator.ScanGreen();
@@ -336,6 +367,7 @@ namespace ARdventure
                 if (GUI.Button(new Rect(385, 411, 240, 40), paused ? "Continue adventure" : "Play again", button))
                 { if (paused) paused = false; else Restart(); }
             }
+            editingToyAddress = useWifiToy && GUI.GetNameOfFocusedControl() == "ToyAddress";
             GUI.matrix = previous;
         }
 

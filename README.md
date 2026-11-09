@@ -17,7 +17,7 @@ Stop Play before changing scripts. A script reload during Play can discard the p
 
 ## Verify
 
-Choose **ARdventure → Validate First Quest** outside Play mode. The Console should report **all 26 quest, crossing and simulated-input checks passed**. These check stage ordering, early/wrong scans, reset, river restrictions, full-map reachability before/after bridge growth, and simulated-input event delivery/disablement.
+Choose **ARdventure → Validate First Quest** outside Play mode. The Console should report **all 31 quest, crossing and simulated-input checks passed**. These check stage ordering, early/wrong scans, real-camera and simulated green acceptance, reset, river restrictions, full-map reachability before/after bridge growth, and simulated-input event delivery/disablement.
 
 For unattended validation with the project closed in the editor:
 
@@ -32,14 +32,15 @@ For unattended validation with the project closed in the editor:
 
 ## Current scope and context
 
+- [Embedded C++ firmware and real-camera setup](firmware/README.md)
 - [Project concept, hardware and implementation principles](Assets/ARdventure/PROJECT-BRIEF.md)
 - [Milestone structure, controls and limitations](Assets/ARdventure/README-MILESTONE.md)
 - [Local verification record](docs/VERIFICATION.md)
 
 Unity uses URP **17.6.0**, Input System **1.20.1**, and the new Input System (`activeInputHandler: 1`). Preserve existing packages, settings and unrelated content.
 
-`ForestQuest` holds progression and map rules. `IToyInput` is the sensor event boundary, with `SimulatedToyInput` as the current adapter. `ForestMilestone` builds the world, handles conventional controls and displays the HUD. Keep future local Wi-Fi transport separate from gameplay. The ordered XIAO ESP32-S3 Sense has camera/microphone/Wi-Fi/BLE, but motion, GPS and dedicated colour sensing require additional hardware. See the brief for limitations.
+`ForestQuest` holds progression and map rules. `IToyInput` is the sensor event boundary: `SimulatedToyInput` supplies debug scans and `WifiToyInput` requests physical camera readings over HTTP (via a local USB bridge or directly over Wi-Fi). `ForestMilestone` builds the world, handles conventional controls and displays the HUD. The XIAO ESP32-S3 Sense has now arrived; its camera/microphone/Wi-Fi/BLE are available, while motion, GPS and dedicated colour sensing require additional hardware. See the firmware guide for setup.
 
-The forest, Pip and artwork are placeholders. There are no enemies, save system, narration, hardware recognition or real toy transport. Trees are decorative; river and map boundaries constrain movement.
+The forest, Pip and artwork are placeholders. There are no enemies, save system, narration or object recognition. Camera firmware measures colour; it does not identify objects. Trees are decorative; river and map boundaries constrain movement.
 
 Git already has `origin` configured to `https://github.com/shez-h/ARdventure.git`. Local work has not been committed or pushed by this setup task. Publishing/pushing requires a separate request.

@@ -45,7 +45,14 @@ namespace ARdventure.Editor
             Check(!quest.Scan(Color.blue), "Wrong colour does not solve puzzle");
             Check(!quest.Scan(Color.black), "Dark readings do not count as green");
             Check(!quest.Scan(Color.white), "White readings do not count as green");
-            Check(quest.Scan(new Color(0.12f, 0.8f, 0.25f)), "Green unlocks growing magic");
+            Check(!quest.Scan(Color.cyan), "Cyan does not count as green");
+            Check(!quest.Scan(Color.yellow), "Yellow does not count as green");
+            Check(!quest.Scan(new Color(0.1f, 0.2f, 0.1f)), "Very dark green needs more light");
+            Check(!quest.Scan(new Color(0.6f, 0.65f, 0.6f)), "Nearly neutral readings do not count as green");
+            Check(quest.Scan(new Color32(55, 86, 70, 255)), "Measured muted camera green unlocks growing magic");
+            var simulatedQuest = new ForestQuest();
+            simulatedQuest.TalkToGuide(); simulatedQuest.InspectCrossing();
+            Check(simulatedQuest.Scan(new Color(0.12f, 0.8f, 0.25f)), "Simulated green still unlocks growing magic");
             Check(!quest.BridgeGrown, "Scanning alone does not open crossing");
             Check(quest.GrowBridge(), "Using ability grows bridge");
             Check(ForestMap.CanStand(new Vector2(1, -0.5f), quest.BridgeGrown), "Bridge route opens");
@@ -74,7 +81,7 @@ namespace ARdventure.Editor
                 Check(scans == 2, "Disabled input does not emit events");
             }
             finally { UnityEngine.Object.DestroyImmediate(inputObject); }
-            Debug.Log("ARdventure: all 26 quest, crossing and simulated-input checks passed.");
+            Debug.Log("ARdventure: all 31 quest, crossing and simulated-input checks passed.");
         }
 
         private static bool CanReachBeacon(bool bridgeGrown)

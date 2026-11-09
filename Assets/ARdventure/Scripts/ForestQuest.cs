@@ -29,7 +29,11 @@ namespace ARdventure
 
         public bool Scan(Color color)
         {
-            bool green = color.g >= 0.25f && color.g > color.r * 1.25f && color.g > color.b * 1.25f;
+            // Real cameras produce muted greens; hue separates them from cyan/yellow,
+            // while saturation and brightness reject neutral or very dark readings.
+            Color.RGBToHSV(color, out float hue, out float saturation, out float brightness);
+            bool green = hue >= 75f / 360f && hue <= 165f / 360f
+                && saturation >= 0.25f && brightness >= 0.25f;
             return green && Advance(QuestStage.FindGreen, QuestStage.GrowBridge);
         }
 
