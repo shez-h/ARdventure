@@ -13,6 +13,10 @@ namespace ARdventure
         private float deviation;
         private const float StartX = 220, EndX = 1060, LineY = 390, HalfWidth = 32;
         public bool Complete => quest.Complete;
+        public float CrossingProgress => quest.Progress;
+        public bool Tracing => quest.Active;
+        public int Slips => quest.Slips;
+        public Vector2 ViewportSize { get; private set; }
         private void Awake()
         {
             var cameraObject = new GameObject("River crossing camera"); cameraObject.transform.SetParent(transform, false);
@@ -28,6 +32,7 @@ namespace ARdventure
         private void OnDestroy() { if (disc != null) Destroy(disc); }
         private void Update()
         {
+            ViewportSize = new Vector2(Screen.width, Screen.height);
             var keys = Keyboard.current;
             if (keys != null && keys.rKey.wasPressedThisFrame) Restart();
             if (keys != null && keys.escapeKey.wasPressedThisFrame) TogglePause();

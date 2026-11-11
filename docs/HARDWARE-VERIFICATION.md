@@ -43,3 +43,7 @@ Microphone values are normalised digital amplitudes, not calibrated SPL. No raw 
 User feedback identified the multi-step sound puzzle and I/l ambiguity as confusing. Echo Grove now listens automatically beside the stone, opens the bridge after one valid sound, and accepts both I (capital i) and L for manual retries. Journal reading, calibration and quiet requirements were removed. Connection details are optional UI. **133 updated Unity checks passed** (39 action/microphone, 47 camera-adventure, 31 Mosswood, 16 camera protocol). The complete simplified screen was played through using one simulated O event, bridge crossing and bell collection. Existing microphone firmware and USB protocol are unchanged.
 
 Verified the revised Unity screen automatically requests `/v1/listen` upon approaching the stone without a key or journal interaction. The connected board returned consecutive quiet readings (for example RMS 0.0002791, peak 0.0010434); these correctly left the path closed. Left the player at the stone with real automatic listening active for the user's clap/voice test. The new live sound-to-open transition has not yet been physically observed; the recorded real sound and full simulated completion are covered as described above.
+
+### User confirmation
+
+After the one-sound revision, the user confirmed “ok that works now” for Echo Grove. The subsequent River Crossing work changes only the Unity balance simulation and its checks; microphone firmware and protocol are unchanged.

@@ -13,10 +13,12 @@ Choose a card with the mouse, press **1–5**, or use **left/right arrows + Ente
 | Mosswood — The Living Bridge | Find green to learn Vineweave and restore the crossing | G: green, B: blue |
 | Prism Hollow — The Sleeping Lanterns | Visit the blue, gold and green lanterns and scan their colours in that order | B: blue, Y: gold, G: green |
 | Moonlit Ruins — The Hidden Seal | Shade the lens to reveal a clue, uncover it and scan in light, then touch the rune stones in the remembered order | N: shade, L: light |
-| Windmill Ridge — The Sky Feather | Simulated gestures; an IMU would be needed for real motion | X: shake, Z: tilt left, C: tilt right, V: steady |
+| River Crossing — The Steady Crossing | Trackpad/mouse tracing simulates keeping the toy balanced; no IMU is connected | Click and hold the explorer, then trace right inside the glowing bridge strip |
 | Echo Grove — The Silver Bell | Walk to the echo stone; one sound on the Sense microphone opens the path automatically | F2: select simulation, O: make a sound |
 
 Use **WASD/arrows** to move, **E/Space** to interact, **T** to scan the real camera, the Sense microphone listens automatically beside the echo stone (**I or L** retries), **Esc** to pause, **R** to restart the current quest, and **M** to return to the quest board. Keep the USB bridge running for real scans; see [hardware setup](firmware/README.md). The selected camera address is retained when switching screens. Completion badges last for the current Play session. Returning to an adventure starts it fresh; there is no saved-progress system.
+
+**River Crossing (4):** click and hold the explorer on the left, then drag right along the gold line. Stay inside the glowing strip. Drifting drains balance; returning to the strip restores it. Sustained drift returns you safely to the bank. Release to rest or reposition your hand, then grab the explorer again to continue. Reaching the right bank completes the quest automatically. This is a trackpad/mouse simulation of steadiness, not accelerometer input.
 
 For Moonlit Ruins, shade the lens gently; a very dark reading reveals the clue. Uncover it and aim at a well-lit surface for the light scan. This is a relative camera-brightness experiment, not a calibrated light meter. The three camera adventures were played through with simulated discoveries; the new blue/gold and shade/light hardware interactions still need testing with physical objects under your lighting.
 
@@ -37,7 +39,9 @@ Stop Play before changing scripts. A script reload during Play can discard the p
 
 ## Verify
 
-Choose **ARdventure → Validate Adventure Demo** outside Play mode to run **133 checks**: 39 motion/microphone checks, 47 camera-adventure checks, the original 31 quest checks and 16 camera-protocol checks. They include ordered lantern scans, clue/rune transitions, wrong/early inputs, restart, simulator events and whole-map reachability on both new maps.
+Choose **ARdventure → Validate Adventure Demo** outside Play mode to run **151 checks**: 18 bridge-balance checks, 39 motion/microphone checks, 47 camera-adventure checks, the original 31 quest checks and 16 camera-protocol checks. They include ordered lantern scans, clue/rune transitions, wrong/early inputs, restart, simulator events and whole-map reachability on both new maps.
+
+For the bridge's screen/input integration check, enter Play, select River Crossing (4) with a fresh crossing, then choose **ARdventure → Run Bridge Pointer Play Check**. It uses a temporary virtual Mouse inside Unity to check grabbing, tracing, release/resume, slipping and completion. It does not move the operating-system cursor. Keep the Game view focused while it runs. All seven input checks passed, in addition to the 151 model/protocol checks. This complements manual trackpad feel-testing.
 
 Choose **ARdventure → Validate First Quest** outside Play mode. The Console should report **all 31 quest, crossing and simulated-input checks passed**. These check stage ordering, early/wrong scans, real-camera and simulated green acceptance, reset, river restrictions, full-map reachability before/after bridge growth, and simulated-input event delivery/disablement.
 
@@ -62,7 +66,7 @@ For unattended validation with the project closed in the editor:
 
 Unity uses URP **17.6.0**, Input System **1.20.1**, and the new Input System (`activeInputHandler: 1`). Preserve existing packages, settings and unrelated content.
 
-`QuestDemo` hosts the quest board and independent adventure screens. `ForestQuest`, `LanternQuest`, `MoonlightQuest`, `WindmillQuest` and `EchoQuest` hold progression rules. `IToyInput` is the sensor event boundary: `SimulatedToyInput` supplies debug scans and `WifiToyInput` requests physical camera readings over HTTP (via a local USB bridge or directly over Wi-Fi). `IToyMotionInput` and `IToySoundInput` provide separate typed boundaries for motion and sound; `SimulatedMotionInput` and `MicrophoneToyInput` are their adapters. `ActionQuestScreen` renders Windmill Ridge and Echo Grove. `ForestMilestone` renders Mosswood; `DiscoveryQuestScreen` renders the two new maps with shared `AdventureArt` utilities. The XIAO ESP32-S3 Sense has arrived; its camera/microphone/Wi-Fi/BLE are available, while motion, GPS and dedicated colour sensing require additional hardware. See the firmware guide for setup.
+`QuestDemo` hosts the quest board and independent adventure screens. `ForestQuest`, `LanternQuest`, `MoonlightQuest`, `BalanceBridgeQuest` and `EchoQuest` hold progression rules. `IToyInput` is the sensor event boundary: `SimulatedToyInput` supplies debug scans and `WifiToyInput` requests physical camera readings over HTTP (via a local USB bridge or directly over Wi-Fi). `IToyMotionInput` and `IToySoundInput` provide separate typed boundaries for motion and sound; `SimulatedMotionInput` and `MicrophoneToyInput` are their adapters. `BalanceBridgeScreen` renders River Crossing; `ActionQuestScreen` renders Echo Grove. The earlier windmill gesture model/adapter remains in source but is no longer launched from the board. `ForestMilestone` renders Mosswood; `DiscoveryQuestScreen` renders the two new maps with shared `AdventureArt` utilities. The XIAO ESP32-S3 Sense has arrived; its camera/microphone/Wi-Fi/BLE are available, while motion, GPS and dedicated colour sensing require additional hardware. See the firmware guide for setup.
 
 The forest, Pip and artwork are placeholders. There are no enemies, save system, narration or object recognition. Camera firmware measures colour; it does not identify objects. Trees are decorative; river and map boundaries constrain movement.
 

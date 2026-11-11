@@ -34,14 +34,19 @@ Scanning elsewhere or out of order does not bank colours or advance the quest. W
 
 A wrong rune resets the partial sequence without restarting the adventure. Shade and scan again for a reminder, then scan light to resume. Early scans and rune touches cannot skip the seal or light-discovery stages. Shade requires the brightest RGB channel ≤18%; light requires a channel ≥45%. These are prototype brightness thresholds affected by camera exposure, not lux measurements. No motion sensor, microphone, recognition service or firmware update is required.
 
-### Windmill Ridge — The Sky Feather
+### River Crossing — The Steady Crossing
 
-1. Read the windkeeper's journal at the entrance (E).
-2. Visit the windmill on the centre path and shake its gears (X).
-3. Visit the north vane and tilt left (Z), then the south vane and tilt right (C).
-4. Return to the windmill and hold steady (V). Cross the restored bridge and collect the sky feather (E).
+This replaces the windmill's shake/tilt sequence on card **4**.
 
-All gestures are **explicitly simulated**, through `IToyMotionInput`. The Sense board has no IMU. Wrong gestures, early gestures and gestures sent away from the current station do not advance the puzzle. A future sensor adapter can emit the same typed events without changing progression rules.
+1. Click and hold the explorer at **START HERE** on the left end of the bridge.
+2. Trace right along the gold centre line with the trackpad or mouse. The explorer follows a continuous trace directly, with no forced walking speed.
+3. Stay inside the glowing strip. Drifting outside pauses forward movement and drains the balance meter; returning restores it. About 0.65 seconds of sustained drift causes a slip and returns the explorer safely to the bank.
+4. Release to rest or reposition your hand. Progress remains where you stopped; grab the explorer again to continue.
+5. Reaching the right bank awards the sky feather and completes the adventure automatically. M returns to the board; R restarts. Esc or Pause lets you take a break and resume from the explorer.
+
+A jump directly to the far bank cannot skip the tracing challenge. Progress cannot move backwards. The initial version forced a six-second crossing, causing the explorer to lag behind an otherwise valid trace; that speed restriction was removed during completion work. The bridge and trace guide are one surface, rather than a separate puzzle panel.
+
+**This is simulated balance.** Trackpad position represents forward travel and sideways drift, not measured toy acceleration. No IMU is fitted or required. `BalanceBridgeQuest` accepts normalised positions independent of screen resolution, while `BalanceBridgeScreen` maps pointer input and draws the crossing. A future physical balance adapter would need to map tilt/steadiness and walking progress to those inputs.
 
 ### Echo Grove — The Silver Bell
 
@@ -64,7 +69,9 @@ For hardware-free play, press **F2** to select simulated input, walk beside the 
 - `SimulatedToyInput.cs`: extended with gold, dark and light events; keyboard scanning is suspended while editing the toy address.
 - `WifiToyInput.cs`: retains the chosen address across screens; request cancellation remains owned by the adapter.
 - `ActionQuests.cs`: independent motion and one-sound quest state machines, typed input events and sound-reading validation.
-- `ActionQuestScreen.cs`: the two non-colour worlds, gesture stations, microphone controls and explicit simulation mode.
+- `ActionQuestScreen.cs`: Echo Grove and its microphone/simulation controls; the original windmill screen remains in source but is no longer launched.
+- `BalanceBridgeQuest.cs` / `BalanceBridgeScreen.cs`: independent balance rules and the pointer-driven river crossing.
+- `BalanceBridgeChecks.cs` / `BridgePointerPlayCheck.cs`: bridge model checks and an Editor Play-mode virtual-Mouse integration check.
 - `SimulatedMotionInput.cs` / `MicrophoneToyInput.cs`: replaceable gesture simulator and cancellable microphone HTTP transport.
 - `QuestDemoTools.cs` / `ActionQuestChecks.cs`: scene creation/registration and expanded validation command.
 
@@ -72,7 +79,7 @@ The new worlds are independent screens inside the entry scene, rather than separ
 
 ## Verification
 
-Unity 6000.6.7f1 compiled the new scripts. **Validate Adventure Demo** passed **133 checks**: 39 motion/microphone checks, 47 camera-adventure checks, 31 existing Mosswood checks and 16 protocol checks. New checks exercise early/wrong scans, ordering, location-node IDs, repeated inputs, rune reset/reminder flows, all reset states, extended simulated events and full-map reachability before/after both gates open.
+Unity 6000.6.7f1 compiled the new scripts. **Validate Adventure Demo** passed **151 checks**: 18 bridge-balance checks, 39 motion/microphone checks, 47 camera-adventure checks, 31 existing Mosswood checks and 16 protocol checks. New checks exercise early/wrong scans, ordering, location-node IDs, repeated inputs, rune reset/reminder flows, all reset states, extended simulated events and full-map reachability before/after both gates open.
 
 Visually played through all three adventures in Unity's landscape Game view using keyboard movement and simulated sensor inputs. Confirmed Prism Hollow's ordered blue/gold/green completion, Moonlit Ruins' clue reveal/hide and wrong-rune reminder flow, rune completion and moonstone collection, and Mosswood's complete original loop when launched from the new board. Navigated between independent screens using M and 1/2/3, and exercised arrow + Enter selection. Observed each completion overlay and final objective. A world-label overlap found during this run was corrected and visually rechecked. Verified that shade/light simulator keys do not advance Moonlit Ruins while paused, and exercised restart and return-to-board after the final changes. Left the running demo on the quest board.
 
@@ -86,4 +93,14 @@ Windmill Ridge was played through to its completion overlay using simulated gest
 
 The microphone-enabled firmware was compiled, uploaded and verified on the connected board. Native colour and sound tests passed with address/undefined-behaviour sanitizers, and all seven bridge pseudo-terminal tests passed. See `HARDWARE-VERIFICATION.md` for actual readings and `firmware/README.md` for reproducible setup. The updated USB bridge remains running. Stop Play before editing runtime-generated screen scripts.
 
-Automatic microphone acquisition was verified in the revised Unity screen with real board readings while standing at the stone. Quiet readings correctly did not open the path. The player was left beside the stone with real listening active, ready for a clap or voice. The simplified live sound-to-open transition awaits physical confirmation.
+Automatic microphone acquisition was verified in the revised Unity screen with real board readings while standing at the stone. Quiet readings correctly did not open the path. The player was left beside the stone with real listening active, ready for a clap or voice. The user subsequently confirmed that the simplified live microphone quest works.
+
+### River Crossing completion — 11 November 2026
+
+Finished the interrupted bridge task and replaced the documentation for the old windmill sequence. **Validate Adventure Demo passed 151 checks**, including all 18 bridge model checks. The six-second movement cap was removed so valid traces follow the pointer directly; discontinuous jumps to the far bank remain rejected.
+
+The Editor Play-mode command **ARdventure → Run Bridge Pointer Play Check** passed **seven checks** through the actual `BalanceBridgeScreen.Update` and Unity Input System with a temporary virtual Mouse. Verified grab, forward movement, release/reposition with progress preserved, resume, sustained drift causing a slip, and a continuous trace reaching completion. The test uses the viewport dimensions captured by the running screen and temporarily routes editor input to the game, restoring the original routing and removing the device on completion, failure, Play exit or script reload.
+
+Visually confirmed the completion overlay, 100% progress and explorer on the far bank. Also checked R restart, Esc pause, M return from pause, the journal's completed badge and a fresh replay. The running demo was left on a fresh River Crossing. Desktop automation could not deliver native pointer drags to this Unity window (`noWindowsAvailable`), so the input play-through used Unity's virtual device rather than a physical trackpad. Subjective trackpad feel and standalone builds remain unverified.
+
+No firmware change, dependency installation, commit or push was made for this completion task.

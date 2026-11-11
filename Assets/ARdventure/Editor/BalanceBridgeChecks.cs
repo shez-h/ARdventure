@@ -16,7 +16,7 @@ namespace ARdventure.Editor
             quest.Trace(.1f, 0, .1f); Check(quest.Progress == 0, "Cannot progress without holding");
             Check(quest.Begin(0, 0), "Explorer can be grabbed on bank");
             quest.Trace(1, 0, .1f); Check(quest.Progress == 0, "Jump to far bank cannot skip bridge");
-            quest.Trace(.1f, 0, .1f); Check(quest.Progress > 0 && quest.Progress < .02f, "Fast trace is speed limited");
+            quest.Trace(.1f, 0, .1f); Check(Mathf.Approximately(quest.Progress, .1f), "Continuous trace follows pointer without lag");
             float progress = quest.Progress;
             quest.Trace(progress + .02f, 1.5f, .1f);
             Check(quest.Strain > 0 && quest.Progress == progress, "Drifting drains balance and stops progress");
@@ -28,8 +28,8 @@ namespace ARdventure.Editor
             Check(quest.Progress == progress, "Invalid trace samples ignored");
             for (int i = 0; i < 7; i++) quest.Trace(progress, 2, .1f);
             Check(quest.Slips == 1 && !quest.Active && quest.Progress == 0 && quest.Strain == 0, "Sustained drift safely returns to bank");
-            quest.Begin(0, 0); quest.Trace(.05f, 0, 100);
-            Check(quest.Progress < .02f, "Long stalled frame cannot jump ahead");
+            quest.Begin(0, 0); quest.Trace(.05f, 2, 100);
+            Check(quest.Progress == 0 && quest.Strain < .2f && quest.Active, "Long stalled frame cannot cause an instant slip");
             for (int i = 0; i < 120 && !quest.Complete; i++) quest.Trace(Mathf.Min(1, quest.Progress + .02f), 0, .1f);
             Check(quest.Complete && !quest.Active && quest.Progress == 1, "Steady continuous trace completes crossing");
             Check(!quest.Begin(1, 0), "Completed crossing cannot restart from input");

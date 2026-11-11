@@ -38,7 +38,9 @@ namespace ARdventure
             Strain = Mathf.Max(0, Strain - seconds * 2);
             if (forward - Progress > .11f)
             { Hint = "Slow down — bring your pointer back beside the explorer."; return; }
-            Progress = Mathf.Clamp01(Mathf.Max(Progress, Mathf.Min(forward, Progress + seconds / 6)));
+            // Follow a continuous trace directly. An arbitrary walking speed makes the
+            // explorer lag behind and punishes an otherwise straight trackpad gesture.
+            Progress = Mathf.Clamp01(Mathf.Max(Progress, forward));
             Hint = "Keep your trace inside the glowing strip. Slow and steady!";
             if (Progress >= .995f)
             { Progress = 1; Active = false; Strain = 0; Hint = "Safely across! The sky feather is yours."; }
